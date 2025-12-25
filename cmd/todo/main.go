@@ -7,11 +7,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+
 	// "os/user"
 	"syscall"
 	"time"
 
 	"github.com/srmty09/Todo-App/internal/config"
+	"github.com/srmty09/Todo-App/internal/http/handlers/tasks"
 	"github.com/srmty09/Todo-App/internal/http/handlers/users"
 	"github.com/srmty09/Todo-App/internal/storage/sqlite"
 	"github.com/srmty09/Todo-App/internal/utils/response"
@@ -33,7 +35,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = sqlite.NewTODOTb(cfg)
+	task_tb, err := sqlite.NewTODOTb(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -43,6 +45,7 @@ func main() {
 
 	router.HandleFunc("/api", test())
 	router.HandleFunc("POST /api/user", users.New(user_tb))
+	router.HandleFunc("POST /api/user/add_task/{id}",tasks.Add(task_tb))
 
 
 	server := &http.Server{

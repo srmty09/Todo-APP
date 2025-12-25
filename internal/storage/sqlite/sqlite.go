@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
+	"time"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/srmty09/Todo-App/internal/config"
 )
@@ -78,3 +79,41 @@ func (s *Sqlite) CreateUser(userid int,name string,email string)(int64, error){
 	return id,nil
 }
 
+func (s *Sqlite) UserExists(userid int64)(bool,error){
+	var exists bool
+	query := "SELECT EXISTS(SELECT 1 FROM user WHERE userid = ?)"
+	err := s.Db.QueryRow(query, userid).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+func (s *Sqlite) AddNewTask(userid int64,title string,description string,completed bool,created_at time.Time,updated_at time.Time)(int64, error){
+	var completedInt int
+	if completed {
+		completedInt = 1
+	} else {
+		completedInt = 0
+	}
+	
+	stmt,err:= s.Db.Prepare(
+		"INSERT INTO todo (user_id,title,description,completed,created_at,updated_at) VALUES(?,?,?,?,?,?)")
+	if err!=nil{
+		return 0,err 
+	}
+	defer stmt.Close()
+
+	res,err := stmt.Exec(userid,title,description,completedInt,created_at,updated_at)
+	if err!=nil{
+		return 0,err 
+	}
+	
+	id,err:=res.LastInsertId()
+	
+	if err!=nil{
+		return 0,err 
+	}
+
+	return id,nil
+}
