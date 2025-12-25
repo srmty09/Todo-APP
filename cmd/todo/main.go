@@ -2,27 +2,48 @@ package main
 
 import (
 	"context"
-	// "log"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	// "os/user"
 	"syscall"
 	"time"
 
 	"github.com/srmty09/Todo-App/internal/config"
+	"github.com/srmty09/Todo-App/internal/http/handlers/users"
+	"github.com/srmty09/Todo-App/internal/storage/sqlite"
+	"github.com/srmty09/Todo-App/internal/utils/response"
 )
+
+func test()http.HandlerFunc{
+	return func(w http.ResponseWriter, r *http.Request) {
+		response.WriteJson(w,http.StatusAccepted,"welcome to my todo app")
+	}
+}
+
+
 
 func main() {
 	// Load config
 	cfg := config.MustLoad()
 
+	user_tb, err := sqlite.NewUserTb(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = sqlite.NewTODOTb(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	slog.Info("Storage initialized", slog.String("env", cfg.Env), slog.String("version", "1.0.0"))
+	
 	router := http.NewServeMux()
 
-	router.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Welcome to the todo app"))
-	})
+	router.HandleFunc("/api", test())
+	router.HandleFunc("POST /api/user", users.New(user_tb))
+
 
 	server := &http.Server{
 		Addr:    cfg.HTTPServer.Addr,
