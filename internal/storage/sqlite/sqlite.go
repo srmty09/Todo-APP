@@ -24,22 +24,29 @@ func New(cfg *config.Config) (*Sqlite, error) {
 	// Create user table
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS user(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	name TEXT,
-	email TEXT
+	name TEXT NOT NULL,
+	email TEXT NOT NULL UNIQUE
 	)`)
 	if err != nil {
 		return nil, err 
 	}
 	
+	// Enable foreign key constraints
+	_, err = db.Exec("PRAGMA foreign_keys = ON")
+	if err != nil {
+		return nil, err
+	}
+	
 	// Create todo table
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS todo(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	user_id INTEGER,
-	title TEXT,
-	description TEXT,
+	user_id INTEGER NOT NULL,
+	title TEXT NOT NULL,
+	description TEXT NOT NULL,
 	completed BOOL DEFAULT FALSE,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
 	)`)
 	if err != nil {
 		return nil, err 
@@ -257,4 +264,9 @@ func (s *Sqlite) EditTask(userid int64, taskid int64, title string, description 
 	}
 	
 	return nil
+}
+
+// Close closes the database connection
+func (s *Sqlite) Close() error {
+	return s.Db.Close()
 }

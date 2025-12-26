@@ -16,16 +16,8 @@ import (
 	"github.com/srmty09/Todo-App/internal/http/handlers/tasks"
 	"github.com/srmty09/Todo-App/internal/http/handlers/users"
 	"github.com/srmty09/Todo-App/internal/storage/sqlite"
-	"github.com/srmty09/Todo-App/internal/utils/response"
+	// "github.com/srmty09/Todo-App/internal/utils/response"
 )
-
-func test()http.HandlerFunc{
-	return func(w http.ResponseWriter, r *http.Request) {
-		response.WriteJson(w,http.StatusAccepted,"welcome to my todo app")
-	}
-}
-
-
 
 func main() {
 	// Load config
@@ -39,7 +31,6 @@ func main() {
 	
 	router := http.NewServeMux()
 
-	router.HandleFunc("/api", test())
 	router.HandleFunc("POST /api/user", users.New(storage))
 	router.HandleFunc("POST /api/user/{id}/add_task/",tasks.Add(storage))
 	router.HandleFunc("GET /api/user/{id}/todo/",tasks.GetTodo(storage))
@@ -80,5 +71,12 @@ func main() {
 		slog.Error("graceful shutdown failed", slog.Any("error", err))
 	} else {
 		slog.Info("server stopped gracefully")
+	}
+
+	// Close database connection
+	if err := storage.Close(); err != nil {
+		slog.Error("failed to close database", slog.Any("error", err))
+	} else {
+		slog.Info("database closed successfully")
 	}
 }

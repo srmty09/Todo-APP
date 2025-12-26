@@ -7,25 +7,24 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/srmty09/Todo-App/internal/storage"
 	"github.com/srmty09/Todo-App/internal/types"
+	"github.com/srmty09/Todo-App/internal/utils/helpers"
 	"github.com/srmty09/Todo-App/internal/utils/response"
 )
 
 
 func Add(storage storage.Storage) http.HandlerFunc{
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := r.PathValue("id")
-		intId,err := strconv.ParseInt(id,10,64)
+		userId, err := helpers.ParsePathInt64(r, "id")
 		if err!= nil{
 			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
 			return
 		} 
-		slog.Info("Adding new task to user",slog.String("userId",id))
+		slog.Info("Adding new task to user",slog.Int64("userId", userId))
 		var task types.TaskMetaData
 		err = json.NewDecoder(r.Body).Decode(&task)
 		if errors.Is(err,io.EOF){
@@ -43,16 +42,16 @@ func Add(storage storage.Storage) http.HandlerFunc{
 			return 
 		}
 		// Check if user exists
-		exists,err := storage.UserExists(intId)
+		exists,err := storage.UserExists(userId)
 		if err != nil{
 			response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
 			return
 		}
 		if !exists{
-			response.WriteJson(w,http.StatusNotFound,response.GeneralError(fmt.Errorf("user with id %d does not exist",intId)))
+			response.WriteJson(w,http.StatusNotFound,response.GeneralError(fmt.Errorf("user with id %d does not exist",userId)))
 			return
 		}
-		lastId,err := storage.AddNewTask(intId,task.Title,task.Description,task.Completed,time.Now(),time.Now())
+		lastId,err := storage.AddNewTask(userId,task.Title,task.Description,task.Completed,time.Now(),time.Now())
 		if err != nil{
 			response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
 			return
@@ -68,24 +67,23 @@ func Add(storage storage.Storage) http.HandlerFunc{
 
 func GetTodo(storage storage.Storage) http.HandlerFunc{
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := r.PathValue("id")
-		intId, err := strconv.ParseInt(id,10,64)
+		userId, err := helpers.ParsePathInt64(r, "id")
 		if err!= nil{
 			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
 			return 
 		}
-		slog.Info("Getting all tasks for user",slog.String("userId",id))
-		exist,err:= storage.UserExists(intId)
+		slog.Info("Getting all tasks for user", slog.Int64("userId", userId))
+		exist,err:= storage.UserExists(userId)
 		if err!= nil{
 			response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
 			return 
 		}
 		if !exist{
-			response.WriteJson(w,http.StatusNotFound,response.GeneralError(fmt.Errorf("user with id %d does not exist",intId)))
+			response.WriteJson(w,http.StatusNotFound,response.GeneralError(fmt.Errorf("user with id %d does not exist",userId)))
 			return 
 		}
 
-		tasks,err := storage.GetTaskForId(intId)
+		tasks,err := storage.GetTaskForId(userId)
 		if err!=nil{
 			response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
 			return 
@@ -98,20 +96,18 @@ func GetTodo(storage storage.Storage) http.HandlerFunc{
 
 func CompletedTask(storage storage.Storage) http.HandlerFunc{
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := r.PathValue("id")
-		intUserId, err := strconv.ParseInt(id,10,64)
+		userId, err := helpers.ParsePathInt64(r, "id")
 		if err!= nil{
 			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
 			return 
 		}	
-		task_id := r.PathValue("task_id")
-		intTaskId,err := strconv.ParseInt(task_id,10,64)
+		taskId, err := helpers.ParsePathInt64(r, "task_id")
 		if err!=nil{
 			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
 			return 
 		}
-		slog.Info("Marking task as complete",slog.String("userId",id),slog.String("taskId",task_id))
-		err = storage.MarkComplete(intUserId, intTaskId)
+		slog.Info("Marking task as complete", slog.Int64("userId", userId), slog.Int64("taskId", taskId))
+		err = storage.MarkComplete(userId, taskId)
 		if err!= nil{
 			response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
 			return 
@@ -125,20 +121,18 @@ func CompletedTask(storage storage.Storage) http.HandlerFunc{
 
 func IncompletedTask(storage storage.Storage) http.HandlerFunc{
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := r.PathValue("id")
-		intUserId, err := strconv.ParseInt(id,10,64)
+		userId, err := helpers.ParsePathInt64(r, "id")
 		if err!= nil{
 			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
 			return 
 		}	
-		task_id := r.PathValue("task_id")
-		intTaskId,err := strconv.ParseInt(task_id,10,64)
+		taskId, err := helpers.ParsePathInt64(r, "task_id")
 		if err!=nil{
 			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
 			return 
 		}
-		slog.Info("Marking task as incomplete",slog.String("userId",id),slog.String("taskId",task_id))
-		err = storage.MarkIncomplete(intUserId, intTaskId)
+		slog.Info("Marking task as incomplete", slog.Int64("userId", userId), slog.Int64("taskId", taskId))
+		err = storage.MarkIncomplete(userId, taskId)
 		if err!= nil{
 			response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
 			return 
@@ -152,20 +146,18 @@ func IncompletedTask(storage storage.Storage) http.HandlerFunc{
 
 func GetSingleTask(storage storage.Storage) http.HandlerFunc{
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := r.PathValue("id")
-		intUserId, err := strconv.ParseInt(id,10,64)
+		userId, err := helpers.ParsePathInt64(r, "id")
 		if err!= nil{
 			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
 			return 
 		}
-		task_id := r.PathValue("task_id")
-		intTaskId,err := strconv.ParseInt(task_id,10,64)
+		taskId, err := helpers.ParsePathInt64(r, "task_id")
 		if err!=nil{
 			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
 			return 
 		}
-		slog.Info("Getting single task",slog.String("userId",id),slog.String("taskId",task_id))
-		task,err := storage.GetSingleTask(intUserId, intTaskId)
+		slog.Info("Getting single task", slog.Int64("userId", userId), slog.Int64("taskId", taskId))
+		task,err := storage.GetSingleTask(userId, taskId)
 		if err!= nil{
 			response.WriteJson(w,http.StatusNotFound,response.GeneralError(err))
 			return 
@@ -176,20 +168,18 @@ func GetSingleTask(storage storage.Storage) http.HandlerFunc{
 
 func DeleteTask(storage storage.Storage) http.HandlerFunc{
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := r.PathValue("id")
-		intUserId, err := strconv.ParseInt(id,10,64)
+		userId, err := helpers.ParsePathInt64(r, "id")
 		if err!= nil{
 			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
 			return 
 		}	
-		task_id := r.PathValue("task_id")
-		intTaskId,err := strconv.ParseInt(task_id,10,64)
+		taskId, err := helpers.ParsePathInt64(r, "task_id")
 		if err!=nil{
 			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
 			return 
 		}
-		slog.Info("Deleting task ",slog.String("userId",id),slog.String("taskId",task_id))
-		err = storage.DeletingTask(intUserId, intTaskId)
+		slog.Info("Deleting task", slog.Int64("userId", userId), slog.Int64("taskId", taskId))
+		err = storage.DeletingTask(userId, taskId)
 		if err!= nil{
 			response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
 			return 
@@ -203,22 +193,20 @@ func DeleteTask(storage storage.Storage) http.HandlerFunc{
 
 func EditTask(storage storage.Storage)http.HandlerFunc{
 	return  func(w http.ResponseWriter, r *http.Request) {
-		id := r.PathValue("id")
-		intUserId,err := strconv.ParseInt(id,10,64)
+		userId, err := helpers.ParsePathInt64(r, "id")
 		if err!=nil{
 			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
 			return
 		}
-		task_id := r.PathValue("task_id")
-		intTaskId,err := strconv.ParseInt(task_id,10,64)
+		taskId, err := helpers.ParsePathInt64(r, "task_id")
 		if err!=nil{
 			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
 			return 
 		}
-		slog.Info("Editing task",slog.String("userId",id),slog.String("taskId",task_id))
+		slog.Info("Editing task", slog.Int64("userId", userId), slog.Int64("taskId", taskId))
 		
 		// Get existing task first
-		existingTask, err := storage.GetSingleTask(intUserId, intTaskId)
+		existingTask, err := storage.GetSingleTask(userId, taskId)
 		if err!=nil{
 			response.WriteJson(w,http.StatusNotFound,response.GeneralError(err))
 			return
@@ -252,12 +240,12 @@ func EditTask(storage storage.Storage)http.HandlerFunc{
 			return 
 		}
 		
-		err = storage.EditTask(intUserId,intTaskId,existingTask.Title,existingTask.Description)
+		err = storage.EditTask(userId,taskId,existingTask.Title,existingTask.Description)
 		if err!=nil{
 			response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
 			return
 		}
-		slog.Info("task edited successfully",slog.String("userId",id),slog.String("taskId",task_id))
+		slog.Info("task edited successfully", slog.Int64("userId", userId), slog.Int64("taskId", taskId))
 		response.WriteJson(w,http.StatusOK,map[string]interface{}{
 			"status": "Updated",
 			"message": "Task updated successfully",

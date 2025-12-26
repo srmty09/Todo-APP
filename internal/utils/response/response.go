@@ -75,14 +75,16 @@ func ValidationError(errs validator.ValidationErrors) Response{
 	for _,err := range errs{
 		switch err.ActualTag(){
 		case "required":
-			errMsgs = append(errMsgs, fmt.Sprintf("field %s is required field",err.Field()))
+			errMsgs = append(errMsgs, fmt.Sprintf("field %s is required",err.Field()))
+		case "email":
+			errMsgs = append(errMsgs, fmt.Sprintf("field %s must be a valid email address",err.Field()))
 		default:
 			errMsgs = append(errMsgs, fmt.Sprintf("field %s is invalid",err.Field()))
 		}
 	}
 	return Response{
 		Status: StatusError,
-		Error: strings.Join(errMsgs,","),
+		Error: strings.Join(errMsgs, ", "),
 	}
 }
 
