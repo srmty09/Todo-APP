@@ -34,7 +34,7 @@ func New(storage storage.StorageForUser) http.HandlerFunc{
 			response.WriteJson(w, http.StatusBadRequest, response.ValidationError(validateErrs))
 			return
 		}
-		lastId,err:=storage.CreateUser(user.UserId,user.Name,user.Email)
+		lastId,err:=storage.CreateUser(user.Name,user.Email)
 		if err!=nil{
 			response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
 			return

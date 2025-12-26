@@ -46,6 +46,7 @@ func main() {
 	router.HandleFunc("/api", test())
 	router.HandleFunc("POST /api/user", users.New(user_tb))
 	router.HandleFunc("POST /api/user/add_task/{id}",tasks.Add(task_tb))
+	router.HandleFunc("GET /api/user/todo/{id}",tasks.GetTodo(task_tb))
 
 
 	server := &http.Server{

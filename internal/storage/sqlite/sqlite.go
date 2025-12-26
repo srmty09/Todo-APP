@@ -3,8 +3,10 @@ package sqlite
 import (
 	"database/sql"
 	"time"
+
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/srmty09/Todo-App/internal/config"
+	"github.com/srmty09/Todo-App/internal/types"
 )
 
 
@@ -19,7 +21,6 @@ func NewUserTb(cfg *config.Config) (*Sqlite, error) {
 	}
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS user(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	userid INTEGER,
 	name TEXT,
 	email TEXT
 	)`)
@@ -57,15 +58,15 @@ func NewTODOTb(cfg *config.Config) (*Sqlite, error) {
 
 
 
-func (s *Sqlite) CreateUser(userid int,name string,email string)(int64, error){
+func (s *Sqlite) CreateUser(name string,email string)(int64, error){
 	stmt,err:= s.Db.Prepare(
-		"INSERT INTO user (userid,name,email) VALUES(?,?,?)")
+		"INSERT INTO user (name,email) VALUES(?,?)")
 	if err!=nil{
 		return 0,err 
 	}
 	defer stmt.Close()
 
-	res,err := stmt.Exec(userid,name,email)
+	res,err := stmt.Exec(name,email)
 	if err!=nil{
 		return 0,err 
 	}
@@ -81,7 +82,7 @@ func (s *Sqlite) CreateUser(userid int,name string,email string)(int64, error){
 
 func (s *Sqlite) UserExists(userid int64)(bool,error){
 	var exists bool
-	query := "SELECT EXISTS(SELECT 1 FROM user WHERE userid = ?)"
+	query := "SELECT EXISTS(SELECT 1 FROM user WHERE id = ?)"
 	err := s.Db.QueryRow(query, userid).Scan(&exists)
 	if err != nil {
 		return false, err
@@ -116,4 +117,31 @@ func (s *Sqlite) AddNewTask(userid int64,title string,description string,complet
 	}
 
 	return id,nil
+}
+
+
+func (s *Sqlite)GetTaskForId(userid int64) ([]types.TaskMetaData,error){
+	stmt,err:= s.Db.Prepare("SELECT title,description,completed,created_at,updated_at FROM todo WHERE user_id = ?")
+	if err!= nil{
+		return []types.TaskMetaData{},err
+	}
+	defer stmt.Close()
+	rows,err := stmt.Query(userid)
+	if err!= nil{
+		return []types.TaskMetaData{},err
+	}
+	defer rows.Close()
+	var tasks []types.TaskMetaData
+
+	for rows.Next(){
+		var task types.TaskMetaData
+		var completedInt int
+		err:= rows.Scan(&task.Title,&task.Description,&completedInt,&task.CreatedAt,&task.UpdatedAt)
+		if err!= nil{
+			return nil,err
+		}
+		task.Completed = completedInt == 1
+		tasks = append(tasks, task)
+	}
+	return tasks,nil
 }
