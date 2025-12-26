@@ -37,7 +37,7 @@ func New(cfg *config.Config) (*Sqlite, error) {
 	user_id INTEGER,
 	title TEXT,
 	description TEXT,
-	completed INTEGER DEFAULT 0,
+	completed BOOL DEFAULT FALSE,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	)`)
@@ -142,7 +142,7 @@ func (s *Sqlite)GetTaskForId(userid int64) ([]types.TaskMetaData,error){
 
 
 func (s *Sqlite) MarkComplete(userid int64, taskid int64) error {
-	stmt, err := s.Db.Prepare("UPDATE todo SET completed = 1, updated_at = ? WHERE id = ? AND user_id = ?")
+	stmt, err := s.Db.Prepare("UPDATE todo SET completed = TRUE, updated_at = ? WHERE id = ? AND user_id = ?")
 	if err != nil {
 		return err
 	}
