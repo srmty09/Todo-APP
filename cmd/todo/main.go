@@ -41,7 +41,7 @@ func main() {
 
 	router.HandleFunc("/api", test())
 	router.HandleFunc("POST /api/user", users.New(storage))
-	router.HandleFunc("POST /api/user/add_task/{id}",tasks.Add(storage))
+	router.HandleFunc("POST /api/user/{id}/add_task/",tasks.Add(storage))
 	router.HandleFunc("GET /api/user/{id}/todo/",tasks.GetTodo(storage))
 	router.HandleFunc("PATCH /api/user/{id}/todo/completed/{task_id}",tasks.CompletedTask(storage))
 
