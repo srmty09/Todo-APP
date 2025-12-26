@@ -150,6 +150,30 @@ func IncompletedTask(storage storage.Storage) http.HandlerFunc{
 }
 
 
+func GetSingleTask(storage storage.Storage) http.HandlerFunc{
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		intUserId, err := strconv.ParseInt(id,10,64)
+		if err!= nil{
+			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
+			return 
+		}
+		task_id := r.PathValue("task_id")
+		intTaskId,err := strconv.ParseInt(task_id,10,64)
+		if err!=nil{
+			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
+			return 
+		}
+		slog.Info("Getting single task",slog.String("userId",id),slog.String("taskId",task_id))
+		task,err := storage.GetSingleTask(intUserId, intTaskId)
+		if err!= nil{
+			response.WriteJson(w,http.StatusNotFound,response.GeneralError(err))
+			return 
+		}
+		response.WriteJson(w,http.StatusOK,task)
+	}
+}
+
 func DeleteTask(storage storage.Storage) http.HandlerFunc{
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
@@ -172,6 +196,71 @@ func DeleteTask(storage storage.Storage) http.HandlerFunc{
 		}
 		response.WriteJson(w,http.StatusOK,map[string]interface{}{
 			"status": "Deleted",
+		})
+	}
+}
+
+
+func EditTask(storage storage.Storage)http.HandlerFunc{
+	return  func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		intUserId,err := strconv.ParseInt(id,10,64)
+		if err!=nil{
+			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
+			return
+		}
+		task_id := r.PathValue("task_id")
+		intTaskId,err := strconv.ParseInt(task_id,10,64)
+		if err!=nil{
+			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
+			return 
+		}
+		slog.Info("Editing task",slog.String("userId",id),slog.String("taskId",task_id))
+		
+		// Get existing task first
+		existingTask, err := storage.GetSingleTask(intUserId, intTaskId)
+		if err!=nil{
+			response.WriteJson(w,http.StatusNotFound,response.GeneralError(err))
+			return
+		}
+		
+		// Decode the update request
+		var updateRequest types.TaskMetaData
+		err = json.NewDecoder(r.Body).Decode(&updateRequest)
+		if errors.Is(err,io.EOF){
+			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(fmt.Errorf("empty body")))
+			return
+		}
+		if err!=nil{
+			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
+			return
+		}
+		
+		// Update only provided fields (partial update)
+		if updateRequest.Title != "" {
+			existingTask.Title = updateRequest.Title
+		}
+		if updateRequest.Description != "" {
+			existingTask.Description = updateRequest.Description
+		}
+		
+		// Validate the final task
+		validate := validator.New()
+		if err:= validate.Struct(existingTask);err!=nil{
+			validateErrs := err.(validator.ValidationErrors)
+			response.WriteJson(w,http.StatusBadRequest,response.ValidationError(validateErrs))
+			return 
+		}
+		
+		err = storage.EditTask(intUserId,intTaskId,existingTask.Title,existingTask.Description)
+		if err!=nil{
+			response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
+			return
+		}
+		slog.Info("task edited successfully",slog.String("userId",id),slog.String("taskId",task_id))
+		response.WriteJson(w,http.StatusOK,map[string]interface{}{
+			"status": "Updated",
+			"message": "Task updated successfully",
 		})
 	}
 }

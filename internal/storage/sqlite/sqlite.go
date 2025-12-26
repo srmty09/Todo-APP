@@ -213,3 +213,48 @@ func (s *Sqlite) DeletingTask(userid int64, taskid int64) error {
 	
 	return nil
 }
+
+func (s *Sqlite) GetSingleTask(userid int64, taskid int64) (*types.TaskMetaData, error) {
+	stmt, err := s.Db.Prepare("SELECT title, description, completed, created_at, updated_at FROM todo WHERE id = ? AND user_id = ?")
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+	
+	var task types.TaskMetaData
+	var completedInt int
+	err = stmt.QueryRow(taskid, userid).Scan(&task.Title, &task.Description, &completedInt, &task.CreatedAt, &task.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("task with id %d does not belong to user with id %d or does not exist", taskid, userid)
+	}
+	if err != nil {
+		return nil, err
+	}
+	
+	task.Completed = completedInt == 1
+	return &task, nil
+}
+
+func (s *Sqlite) EditTask(userid int64, taskid int64, title string, description string) error {
+	stmt, err := s.Db.Prepare("UPDATE todo SET title = ?, description = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	
+	result, err := stmt.Exec(title, description, time.Now(), taskid, userid)
+	if err != nil {
+		return err
+	}
+	
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	
+	if rowsAffected == 0 {
+		return fmt.Errorf("task with id %d does not belong to user with id %d or does not exist", taskid, userid)
+	}
+	
+	return nil
+}
