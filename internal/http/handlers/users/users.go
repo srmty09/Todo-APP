@@ -15,7 +15,7 @@ import (
 )
 
 //create new user
-func New(storage storage.StorageForUser) http.HandlerFunc{
+func New(storage storage.Storage) http.HandlerFunc{
 	return func(w http.ResponseWriter, r *http.Request) {
 		slog.Info("creating a user")
 		var user types.User

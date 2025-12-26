@@ -31,11 +31,7 @@ func main() {
 	// Load config
 	cfg := config.MustLoad()
 
-	user_tb, err := sqlite.NewUserTb(cfg)
-	if err != nil {
-		log.Fatal(err)
-	}
-	task_tb, err := sqlite.NewTODOTb(cfg)
+	storage, err := sqlite.New(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -44,10 +40,10 @@ func main() {
 	router := http.NewServeMux()
 
 	router.HandleFunc("/api", test())
-	router.HandleFunc("POST /api/user", users.New(user_tb))
-	router.HandleFunc("POST /api/user/add_task/{id}",tasks.Add(task_tb))
-	router.HandleFunc("GET /api/user/{id}/todo/",tasks.GetTodo(task_tb))
-	router.HandleFunc("PATCH /api/user/{id}/todo/completed/{task_id}",tasks.CompletedTask(task_tb))
+	router.HandleFunc("POST /api/user", users.New(storage))
+	router.HandleFunc("POST /api/user/add_task/{id}",tasks.Add(storage))
+	router.HandleFunc("GET /api/user/{id}/todo/",tasks.GetTodo(storage))
+	router.HandleFunc("PATCH /api/user/{id}/todo/completed/{task_id}",tasks.CompletedTask(storage))
 
 
 	server := &http.Server{

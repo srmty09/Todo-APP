@@ -15,30 +15,23 @@ type Sqlite struct{
 	Db *sql.DB
 }
 
-func NewUserTb(cfg *config.Config) (*Sqlite, error) {
+func New(cfg *config.Config) (*Sqlite, error) {
 	db, err := sql.Open("sqlite3", cfg.Storage_path)
 	if err != nil {
 		return nil, err
 	}
+	
+	// Create user table
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS user(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	name TEXT,
 	email TEXT
 	)`)
-
 	if err != nil {
 		return nil, err 
 	}
-	return &Sqlite{
-		Db: db,
-	}, nil
-}
-
-func NewTODOTb(cfg *config.Config) (*Sqlite, error) {
-	db, err := sql.Open("sqlite3", cfg.Storage_path)
-	if err != nil {
-		return nil, err
-	}
+	
+	// Create todo table
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS todo(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	user_id INTEGER,
@@ -48,10 +41,10 @@ func NewTODOTb(cfg *config.Config) (*Sqlite, error) {
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	)`)
-
 	if err != nil {
 		return nil, err 
 	}
+	
 	return &Sqlite{
 		Db: db,
 	}, nil

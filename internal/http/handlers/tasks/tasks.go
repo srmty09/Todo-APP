@@ -17,7 +17,7 @@ import (
 )
 
 
-func Add(storage storage.StorageForTask) http.HandlerFunc{
+func Add(storage storage.Storage) http.HandlerFunc{
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		intId,err := strconv.ParseInt(id,10,64)
@@ -66,7 +66,7 @@ func Add(storage storage.StorageForTask) http.HandlerFunc{
 }
 
 
-func GetTodo(storage storage.StorageForTask) http.HandlerFunc{
+func GetTodo(storage storage.Storage) http.HandlerFunc{
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		intId, err := strconv.ParseInt(id,10,64)
@@ -96,7 +96,7 @@ func GetTodo(storage storage.StorageForTask) http.HandlerFunc{
 
 
 
-func CompletedTask(storage storage.StorageForTask) http.HandlerFunc{
+func CompletedTask(storage storage.Storage) http.HandlerFunc{
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		intUserId, err := strconv.ParseInt(id,10,64)
