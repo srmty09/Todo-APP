@@ -121,3 +121,30 @@ func CompletedTask(storage storage.Storage) http.HandlerFunc{
 		})
 	}
 }
+
+
+func IncompletedTask(storage storage.Storage) http.HandlerFunc{
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		intUserId, err := strconv.ParseInt(id,10,64)
+		if err!= nil{
+			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
+			return 
+		}	
+		task_id := r.PathValue("task_id")
+		intTaskId,err := strconv.ParseInt(task_id,10,64)
+		if err!=nil{
+			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
+			return 
+		}
+		slog.Info("Marking task as incomplete",slog.String("userId",id),slog.String("taskId",task_id))
+		err = storage.MarkIncomplete(intUserId, intTaskId)
+		if err!= nil{
+			response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
+			return 
+		}
+		response.WriteJson(w,http.StatusOK,map[string]interface{}{
+			"status": "Incompleted",
+		})
+	}
+}

@@ -164,3 +164,27 @@ func (s *Sqlite) MarkComplete(userid int64, taskid int64) error {
 	
 	return nil
 }
+
+func (s *Sqlite) MarkIncomplete(userid int64, taskid int64) error {
+	stmt, err := s.Db.Prepare("UPDATE todo SET completed = FALSE, updated_at = ? WHERE id = ? AND user_id = ?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	
+	result, err := stmt.Exec(time.Now(), taskid, userid)
+	if err != nil {
+		return err
+	}
+	
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	
+	if rowsAffected == 0 {
+		return fmt.Errorf("task with id %d does not belong to user with id %d or does not exist", taskid, userid)
+	}
+	
+	return nil
+}
