@@ -45,7 +45,7 @@ func main() {
 	router.HandleFunc("GET /api/user/{id}/todo/",tasks.GetTodo(storage))
 	router.HandleFunc("PATCH /api/user/{id}/todo/completed/{task_id}",tasks.CompletedTask(storage))
 	router.HandleFunc("PATCH /api/user/{id}/todo/incompleted/{task_id}",tasks.IncompletedTask(storage))
-	// router.HandleFunc("DELETE /api/user/{id}/todo/{task_id}",tasks.DeleteTask())
+	router.HandleFunc("DELETE /api/user/{id}/todo/{task_id}",tasks.DeleteTask(storage))
 
 	server := &http.Server{
 		Addr:    cfg.HTTPServer.Addr,

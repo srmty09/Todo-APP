@@ -14,4 +14,5 @@ type Storage interface{
 	GetTaskForId(userid int64)([]types.TaskMetaData,error)
 	MarkComplete(userid int64, taskid int64)(error)
 	MarkIncomplete(userid int64, taskid int64)(error)
+	DeletingTask(userid int64, taskid int64)(error)
 }
