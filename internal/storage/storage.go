@@ -17,5 +17,6 @@ type Storage interface{
 	MarkIncomplete(userid int64, taskid int64)(error)
 	DeletingTask(userid int64, taskid int64)(error)
 	EditTask(userid int64, taskid int64, title string, description string)(error)
+	GetUser(userid int64)(*types.User,error)
 	Close() error
 }

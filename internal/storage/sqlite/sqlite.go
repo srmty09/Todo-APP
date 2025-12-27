@@ -266,6 +266,23 @@ func (s *Sqlite) EditTask(userid int64, taskid int64, title string, description 
 	return nil
 }
 
+
+func (s *Sqlite) GetUser(userId int64)(*types.User,error){
+	stmt,err := s.Db.Prepare("SELECT name, email FROM user WHERE id = ?")
+	if err!= nil{
+		return nil,err
+	}
+	defer stmt.Close()
+	var user types.User
+	err = stmt.QueryRow(userId).Scan(&user.Name,&user.Email)
+	if err!=nil{
+		return nil,err
+	}
+	return &user,nil
+}
+
+
+
 // Close closes the database connection
 func (s *Sqlite) Close() error {
 	return s.Db.Close()

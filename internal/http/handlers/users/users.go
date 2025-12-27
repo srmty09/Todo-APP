@@ -11,6 +11,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/srmty09/Todo-App/internal/storage"
 	"github.com/srmty09/Todo-App/internal/types"
+	"github.com/srmty09/Todo-App/internal/utils/helpers"
 	"github.com/srmty09/Todo-App/internal/utils/response"
 )
 
@@ -44,5 +45,31 @@ func New(storage storage.Storage) http.HandlerFunc{
 			"status": "OK",
 			"id": lastId,
 		})
+	}
+}
+
+func GetUserInfo(storage storage.Storage) http.HandlerFunc{
+	return func(w http.ResponseWriter, r *http.Request) {
+		intId,err := helpers.ParsePathInt64(r,"id")
+		if err!= nil{
+			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
+			return 
+		}
+	slog.Info("getting user info for", slog.Int64("userId", intId))
+	exist,err := storage.UserExists(intId)
+	if err!=nil{
+		response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
+		return
+	}
+	if !exist{
+		response.WriteJson(w,http.StatusNotFound,response.GeneralError(fmt.Errorf("user with id %d does not exist", intId)))
+		return 
+	}
+		user,err := storage.GetUser(intId)
+		if err!=nil{
+			response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
+			return 
+		}
+		response.WriteJson(w,http.StatusOK,user)
 	}
 }
