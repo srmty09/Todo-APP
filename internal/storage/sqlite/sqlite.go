@@ -43,6 +43,7 @@ func New(cfg *config.Config) (*Sqlite, error) {
 	user_id INTEGER NOT NULL,
 	title TEXT NOT NULL,
 	description TEXT NOT NULL,
+	priority TEXT NOT NULL DEFAULT 'medium',
 	completed BOOL DEFAULT FALSE,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -50,6 +51,13 @@ func New(cfg *config.Config) (*Sqlite, error) {
 	)`)
 	if err != nil {
 		return nil, err 
+	}
+	
+	// Add priority column if it doesn't exist (for existing databases)
+	_, err = db.Exec(`ALTER TABLE todo ADD COLUMN priority TEXT NOT NULL DEFAULT 'medium'`)
+	if err != nil {
+		// Ignore error if column already exists
+		// SQLite will return an error if the column already exists
 	}
 	
 	return &Sqlite{
@@ -91,7 +99,7 @@ func (s *Sqlite) UserExists(userid int64)(bool,error){
 	return exists, nil
 }
 
-func (s *Sqlite) AddNewTask(userid int64,title string,description string,completed bool,created_at time.Time,updated_at time.Time)(int64, error){
+func (s *Sqlite) AddNewTask(userid int64,title string,description string,priority string,completed bool,created_at time.Time,updated_at time.Time)(int64, error){
 	var completedInt int
 	if completed {
 		completedInt = 1
@@ -100,13 +108,13 @@ func (s *Sqlite) AddNewTask(userid int64,title string,description string,complet
 	}
 	
 	stmt,err:= s.Db.Prepare(
-		"INSERT INTO todo (user_id,title,description,completed,created_at,updated_at) VALUES(?,?,?,?,?,?)")
+		"INSERT INTO todo (user_id,title,description,priority,completed,created_at,updated_at) VALUES(?,?,?,?,?,?,?)")
 	if err!=nil{
 		return 0,err 
 	}
 	defer stmt.Close()
 
-	res,err := stmt.Exec(userid,title,description,completedInt,created_at,updated_at)
+	res,err := stmt.Exec(userid,title,description,priority,completedInt,created_at,updated_at)
 	if err!=nil{
 		return 0,err 
 	}
@@ -122,7 +130,7 @@ func (s *Sqlite) AddNewTask(userid int64,title string,description string,complet
 
 
 func (s *Sqlite)GetTaskForId(userid int64) ([]types.TaskMetaData,error){
-	stmt,err:= s.Db.Prepare("SELECT title,description,completed,created_at,updated_at FROM todo WHERE user_id = ?")
+	stmt,err:= s.Db.Prepare("SELECT title,description,priority,completed,created_at,updated_at FROM todo WHERE user_id = ? ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END, created_at DESC")
 	if err!= nil{
 		return []types.TaskMetaData{},err
 	}
@@ -137,7 +145,7 @@ func (s *Sqlite)GetTaskForId(userid int64) ([]types.TaskMetaData,error){
 	for rows.Next(){
 		var task types.TaskMetaData
 		var completedInt int
-		err:= rows.Scan(&task.Title,&task.Description,&completedInt,&task.CreatedAt,&task.UpdatedAt)
+		err:= rows.Scan(&task.Title,&task.Description,&task.Priority,&completedInt,&task.CreatedAt,&task.UpdatedAt)
 		if err!= nil{
 			return nil,err
 		}
@@ -222,7 +230,7 @@ func (s *Sqlite) DeletingTask(userid int64, taskid int64) error {
 }
 
 func (s *Sqlite) GetSingleTask(userid int64, taskid int64) (*types.TaskMetaData, error) {
-	stmt, err := s.Db.Prepare("SELECT title, description, completed, created_at, updated_at FROM todo WHERE id = ? AND user_id = ?")
+	stmt, err := s.Db.Prepare("SELECT title, description, priority, completed, created_at, updated_at FROM todo WHERE id = ? AND user_id = ?")
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +238,7 @@ func (s *Sqlite) GetSingleTask(userid int64, taskid int64) (*types.TaskMetaData,
 	
 	var task types.TaskMetaData
 	var completedInt int
-	err = stmt.QueryRow(taskid, userid).Scan(&task.Title, &task.Description, &completedInt, &task.CreatedAt, &task.UpdatedAt)
+	err = stmt.QueryRow(taskid, userid).Scan(&task.Title, &task.Description, &task.Priority, &completedInt, &task.CreatedAt, &task.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("task with id %d does not belong to user with id %d or does not exist", taskid, userid)
 	}
@@ -242,14 +250,14 @@ func (s *Sqlite) GetSingleTask(userid int64, taskid int64) (*types.TaskMetaData,
 	return &task, nil
 }
 
-func (s *Sqlite) EditTask(userid int64, taskid int64, title string, description string) error {
-	stmt, err := s.Db.Prepare("UPDATE todo SET title = ?, description = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+func (s *Sqlite) EditTask(userid int64, taskid int64, title string, description string, priority string) error {
+	stmt, err := s.Db.Prepare("UPDATE todo SET title = ?, description = ?, priority = ?, updated_at = ? WHERE id = ? AND user_id = ?")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 	
-	result, err := stmt.Exec(title, description, time.Now(), taskid, userid)
+	result, err := stmt.Exec(title, description, priority, time.Now(), taskid, userid)
 	if err != nil {
 		return err
 	}
@@ -307,7 +315,7 @@ func (s *Sqlite) DeleteUser(userid int64)(error){
 
 
 func (s *Sqlite)GetCompletedTask(userid int64) ([]types.TaskMetaData,error){
-	stmt,err:= s.Db.Prepare("SELECT title,description,created_at,updated_at FROM todo WHERE user_id = ? AND completed = 1")
+	stmt,err:= s.Db.Prepare("SELECT title,description,priority,created_at,updated_at FROM todo WHERE user_id = ? AND completed = 1 ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END, created_at DESC")
 	if err!= nil{
 		return nil,err
 	}
@@ -321,7 +329,7 @@ func (s *Sqlite)GetCompletedTask(userid int64) ([]types.TaskMetaData,error){
 
 	for rows.Next(){
 		var task types.TaskMetaData
-		err:= rows.Scan(&task.Title,&task.Description,&task.CreatedAt,&task.UpdatedAt)
+		err:= rows.Scan(&task.Title,&task.Description,&task.Priority,&task.CreatedAt,&task.UpdatedAt)
 		if err!= nil{
 			return nil,err
 		}
@@ -336,7 +344,7 @@ func (s *Sqlite)GetCompletedTask(userid int64) ([]types.TaskMetaData,error){
 }
 
 func (s *Sqlite)GetIncompletedTask(userid int64) ([]types.TaskMetaData,error){
-	stmt,err:= s.Db.Prepare("SELECT title,description,created_at,updated_at FROM todo WHERE user_id = ? AND completed = 0")
+	stmt,err:= s.Db.Prepare("SELECT title,description,priority,created_at,updated_at FROM todo WHERE user_id = ? AND completed = 0 ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END, created_at DESC")
 	if err!= nil{
 		return nil,err
 	}
@@ -350,7 +358,7 @@ func (s *Sqlite)GetIncompletedTask(userid int64) ([]types.TaskMetaData,error){
 
 	for rows.Next(){
 		var task types.TaskMetaData
-		err:= rows.Scan(&task.Title,&task.Description,&task.CreatedAt,&task.UpdatedAt)
+		err:= rows.Scan(&task.Title,&task.Description,&task.Priority,&task.CreatedAt,&task.UpdatedAt)
 		if err!= nil{
 			return nil,err
 		}
@@ -367,7 +375,7 @@ func (s *Sqlite)GetIncompletedTask(userid int64) ([]types.TaskMetaData,error){
 
 func (s *Sqlite)GetTaskWithTitle(userid int64,keyword string) ([]types.TaskMetaData,error){
 	// Search in both title AND description for better results
-	stmt,err:= s.Db.Prepare("SELECT title, description, completed, created_at, updated_at FROM todo WHERE user_id = ? AND (title LIKE ? OR description LIKE ?)")
+	stmt,err:= s.Db.Prepare("SELECT title, description, priority, completed, created_at, updated_at FROM todo WHERE user_id = ? AND (title LIKE ? OR description LIKE ?) ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END, created_at DESC")
 	if err!= nil{
 		return nil,err
 	}
@@ -382,7 +390,7 @@ func (s *Sqlite)GetTaskWithTitle(userid int64,keyword string) ([]types.TaskMetaD
 	for rows.Next(){
 		var task types.TaskMetaData
 		var completedInt int
-		err:= rows.Scan(&task.Title, &task.Description, &completedInt, &task.CreatedAt, &task.UpdatedAt)
+		err:= rows.Scan(&task.Title, &task.Description, &task.Priority, &completedInt, &task.CreatedAt, &task.UpdatedAt)
 		if err!= nil{
 			return nil,err
 		}
@@ -405,7 +413,7 @@ func (s *Sqlite)GetTaskWithFilters(userid int64, keyword string, status string)(
 		completedFilter = 0
 	}
 	
-	stmt,err:= s.Db.Prepare("SELECT title, description, completed, created_at, updated_at FROM todo WHERE user_id = ? AND completed = ? AND (title LIKE ? OR description LIKE ?)")
+	stmt,err:= s.Db.Prepare("SELECT title, description, priority, completed, created_at, updated_at FROM todo WHERE user_id = ? AND completed = ? AND (title LIKE ? OR description LIKE ?) ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END, created_at DESC")
 	if err!= nil{
 		return nil,err
 	}
@@ -420,7 +428,7 @@ func (s *Sqlite)GetTaskWithFilters(userid int64, keyword string, status string)(
 	for rows.Next(){
 		var task types.TaskMetaData
 		var completedInt int
-		err:= rows.Scan(&task.Title, &task.Description, &completedInt, &task.CreatedAt, &task.UpdatedAt)
+		err:= rows.Scan(&task.Title, &task.Description, &task.Priority, &completedInt, &task.CreatedAt, &task.UpdatedAt)
 		if err!= nil{
 			return nil,err
 		}

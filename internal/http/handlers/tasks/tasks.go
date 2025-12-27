@@ -51,7 +51,7 @@ func Add(storage storage.Storage) http.HandlerFunc{
 			response.WriteJson(w,http.StatusNotFound,response.GeneralError(fmt.Errorf("user with id %d does not exist",userId)))
 			return
 		}
-		lastId,err := storage.AddNewTask(userId,task.Title,task.Description,task.Completed,time.Now(),time.Now())
+		lastId,err := storage.AddNewTask(userId,task.Title,task.Description,task.Priority,task.Completed,time.Now(),time.Now())
 		if err != nil{
 			response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
 			return
@@ -296,6 +296,9 @@ func EditTask(storage storage.Storage)http.HandlerFunc{
 		if updateRequest.Description != "" {
 			existingTask.Description = updateRequest.Description
 		}
+		if updateRequest.Priority != "" {
+			existingTask.Priority = updateRequest.Priority
+		}
 		
 		// Validate the final task
 		validate := validator.New()
@@ -305,7 +308,7 @@ func EditTask(storage storage.Storage)http.HandlerFunc{
 			return 
 		}
 		
-		err = storage.EditTask(userId,taskId,existingTask.Title,existingTask.Description)
+		err = storage.EditTask(userId,taskId,existingTask.Title,existingTask.Description,existingTask.Priority)
 		if err!=nil{
 			response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
 			return
