@@ -282,8 +282,6 @@ func (s *Sqlite) GetUser(userId int64)(*types.User,error){
 }
 
 func (s *Sqlite) DeleteUser(userid int64)(error){
-	// This single query deletes the user AND all their tasks automatically
-	// because we have FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
 	stmt, err := s.Db.Prepare("DELETE FROM user WHERE id = ?")
 	if err != nil {
 		return err
@@ -307,6 +305,65 @@ func (s *Sqlite) DeleteUser(userid int64)(error){
 	return nil
 }
 
+
+func (s *Sqlite)GetCompletedTask(userid int64) ([]types.TaskMetaData,error){
+	stmt,err:= s.Db.Prepare("SELECT title,description,created_at,updated_at FROM todo WHERE user_id = ? AND completed = 1")
+	if err!= nil{
+		return nil,err
+	}
+	defer stmt.Close()
+	rows,err := stmt.Query(userid)
+	if err!= nil{
+		return nil,err
+	}
+	defer rows.Close()
+	var tasks []types.TaskMetaData
+
+	for rows.Next(){
+		var task types.TaskMetaData
+		err:= rows.Scan(&task.Title,&task.Description,&task.CreatedAt,&task.UpdatedAt)
+		if err!= nil{
+			return nil,err
+		}
+		task.Completed = true 
+		tasks = append(tasks, task)
+	}
+	if len(tasks) == 0 {
+		return nil, nil
+	}
+	
+	return tasks,nil
+}
+
+func (s *Sqlite)GetIncompletedTask(userid int64) ([]types.TaskMetaData,error){
+	stmt,err:= s.Db.Prepare("SELECT title,description,created_at,updated_at FROM todo WHERE user_id = ? AND completed = 0")
+	if err!= nil{
+		return nil,err
+	}
+	defer stmt.Close()
+	rows,err := stmt.Query(userid)
+	if err!= nil{
+		return nil,err
+	}
+	defer rows.Close()
+	var tasks []types.TaskMetaData
+
+	for rows.Next(){
+		var task types.TaskMetaData
+		err:= rows.Scan(&task.Title,&task.Description,&task.CreatedAt,&task.UpdatedAt)
+		if err!= nil{
+			return nil,err
+		}
+		task.Completed = false 
+		tasks = append(tasks, task)
+	}
+	
+	if len(tasks) == 0 {
+		return nil, nil
+	}
+	
+	return tasks,nil
+}
 
 // Close closes the database connection
 func (s *Sqlite) Close() error {

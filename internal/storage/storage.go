@@ -19,5 +19,7 @@ type Storage interface{
 	EditTask(userid int64, taskid int64, title string, description string)(error)
 	GetUser(userid int64)(*types.User,error)
 	DeleteUser(userid int64)(error)
+	GetCompletedTask(userid int64)([]types.TaskMetaData,error)
+	GetIncompletedTask(userid int64)([]types.TaskMetaData,error)
 	Close() error
 }

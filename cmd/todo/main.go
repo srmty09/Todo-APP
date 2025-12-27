@@ -38,8 +38,8 @@ func main() {
 	
 	// Task routes
 	router.HandleFunc("POST /api/user/{id}/add_task/",tasks.Add(storage))
-	router.HandleFunc("GET /api/user/{id}/todo/",tasks.GetTodo(storage))
 	router.HandleFunc("GET /api/user/{id}/todo/{task_id}",tasks.GetSingleTask(storage))
+	router.HandleFunc("GET /api/user/{id}/todo/",tasks.GetTodo(storage))
 	router.HandleFunc("PATCH /api/user/{id}/todo/completed/{task_id}",tasks.CompletedTask(storage))
 	router.HandleFunc("PATCH /api/user/{id}/todo/incompleted/{task_id}",tasks.IncompletedTask(storage))
 	router.HandleFunc("DELETE /api/user/{id}/todo/{task_id}",tasks.DeleteTask(storage))

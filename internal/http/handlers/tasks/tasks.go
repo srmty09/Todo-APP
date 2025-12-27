@@ -72,7 +72,12 @@ func GetTodo(storage storage.Storage) http.HandlerFunc{
 			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
 			return 
 		}
-		slog.Info("Getting all tasks for user", slog.Int64("userId", userId))
+		
+		// Get the status query parameter
+		status := r.URL.Query().Get("status")
+		
+		slog.Info("Getting tasks for user", slog.Int64("userId", userId), slog.String("status", status))
+		
 		exist,err:= storage.UserExists(userId)
 		if err!= nil{
 			response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
@@ -83,11 +88,45 @@ func GetTodo(storage storage.Storage) http.HandlerFunc{
 			return 
 		}
 
-		tasks,err := storage.GetTaskForId(userId)
-		if err!=nil{
-			response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
-			return 
+		var tasks []types.TaskMetaData
+		
+
+		switch status {
+		case "completed":
+			tasks, err = storage.GetCompletedTask(userId)
+			if err != nil {
+				response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+				return
+			}
+			if tasks == nil {
+				response.WriteJson(w, http.StatusOK, map[string]interface{}{
+					"message": "No completed tasks found",
+					"tasks":   []types.TaskMetaData{},
+				})
+				return
+			}
+		case "incomplete", "incompleted":
+			tasks, err = storage.GetIncompletedTask(userId)
+			if err != nil {
+				response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+				return
+			}
+			if tasks == nil {
+				response.WriteJson(w, http.StatusOK, map[string]interface{}{
+					"message": "All tasks completed! ",
+					"tasks":   []types.TaskMetaData{},
+				})
+				return
+			}
+		default:
+			// No status or invalid status - return all tasks
+			tasks, err = storage.GetTaskForId(userId)
+			if err != nil {
+				response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+				return
+			}
 		}
+		
 		response.WriteJson(w,http.StatusOK,tasks)
 	}
 }
