@@ -73,8 +73,8 @@ func GetTodo(storage storage.Storage) http.HandlerFunc{
 			return 
 		}
 		
-		// Get the status query parameter
 		status := r.URL.Query().Get("status")
+		keyword := r.URL.Query().Get("search")
 		
 		slog.Info("Getting tasks for user", slog.Int64("userId", userId), slog.String("status", status))
 		
@@ -88,9 +88,35 @@ func GetTodo(storage storage.Storage) http.HandlerFunc{
 			return 
 		}
 
-		var tasks []types.TaskMetaData
-		
-
+	var tasks []types.TaskMetaData
+	
+	if keyword != "" && status != "" {
+		tasks, err = storage.GetTaskWithFilters(userId, "%"+keyword+"%", status)
+		if err != nil {
+			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+			return
+		}
+		if tasks == nil {
+			response.WriteJson(w, http.StatusOK, map[string]interface{}{
+				"message": fmt.Sprintf("No %s tasks found matching '%s'", status, keyword),
+				"tasks":   []types.TaskMetaData{},
+			})
+			return
+		}
+	} else if keyword != "" {
+		tasks, err = storage.GetTaskWithTitle(userId, "%"+keyword+"%")
+		if err != nil {
+			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+			return
+		}
+		if tasks == nil {
+			response.WriteJson(w, http.StatusOK, map[string]interface{}{
+				"message": "No task found",
+				"tasks":   []types.TaskMetaData{},
+			})
+			return
+		}
+	} else {
 		switch status {
 		case "completed":
 			tasks, err = storage.GetCompletedTask(userId)
@@ -113,20 +139,20 @@ func GetTodo(storage storage.Storage) http.HandlerFunc{
 			}
 			if tasks == nil {
 				response.WriteJson(w, http.StatusOK, map[string]interface{}{
-					"message": "All tasks completed! ",
+					"message": "All tasks completed!",
 					"tasks":   []types.TaskMetaData{},
 				})
 				return
 			}
 		default:
-			// No status or invalid status - return all tasks
 			tasks, err = storage.GetTaskForId(userId)
 			if err != nil {
 				response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
 				return
 			}
 		}
-		
+	}
+
 		response.WriteJson(w,http.StatusOK,tasks)
 	}
 }

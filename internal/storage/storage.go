@@ -21,5 +21,7 @@ type Storage interface{
 	DeleteUser(userid int64)(error)
 	GetCompletedTask(userid int64)([]types.TaskMetaData,error)
 	GetIncompletedTask(userid int64)([]types.TaskMetaData,error)
+	GetTaskWithTitle(userid int64,keyword string)([]types.TaskMetaData,error)
+	GetTaskWithFilters(userid int64, keyword string, status string)([]types.TaskMetaData,error)
 	Close() error
 }

@@ -365,6 +365,76 @@ func (s *Sqlite)GetIncompletedTask(userid int64) ([]types.TaskMetaData,error){
 	return tasks,nil
 }
 
+func (s *Sqlite)GetTaskWithTitle(userid int64,keyword string) ([]types.TaskMetaData,error){
+	// Search in both title AND description for better results
+	stmt,err:= s.Db.Prepare("SELECT title, description, completed, created_at, updated_at FROM todo WHERE user_id = ? AND (title LIKE ? OR description LIKE ?)")
+	if err!= nil{
+		return nil,err
+	}
+	defer stmt.Close()
+	rows,err := stmt.Query(userid, keyword, keyword)
+	if err!= nil{
+		return nil,err
+	}
+	defer rows.Close()
+	var tasks []types.TaskMetaData
+
+	for rows.Next(){
+		var task types.TaskMetaData
+		var completedInt int
+		err:= rows.Scan(&task.Title, &task.Description, &completedInt, &task.CreatedAt, &task.UpdatedAt)
+		if err!= nil{
+			return nil,err
+		}
+		task.Completed = completedInt == 1
+		tasks = append(tasks, task)
+	}
+	
+	if len(tasks) == 0 {
+		return nil, nil
+	}
+	
+	return tasks,nil
+}
+
+func (s *Sqlite)GetTaskWithFilters(userid int64, keyword string, status string)([]types.TaskMetaData,error){
+	var completedFilter int
+	if status == "completed" {
+		completedFilter = 1
+	} else {
+		completedFilter = 0
+	}
+	
+	stmt,err:= s.Db.Prepare("SELECT title, description, completed, created_at, updated_at FROM todo WHERE user_id = ? AND completed = ? AND (title LIKE ? OR description LIKE ?)")
+	if err!= nil{
+		return nil,err
+	}
+	defer stmt.Close()
+	rows,err := stmt.Query(userid, completedFilter, keyword, keyword)
+	if err!= nil{
+		return nil,err
+	}
+	defer rows.Close()
+	var tasks []types.TaskMetaData
+
+	for rows.Next(){
+		var task types.TaskMetaData
+		var completedInt int
+		err:= rows.Scan(&task.Title, &task.Description, &completedInt, &task.CreatedAt, &task.UpdatedAt)
+		if err!= nil{
+			return nil,err
+		}
+		task.Completed = completedInt == 1
+		tasks = append(tasks, task)
+	}
+	
+	if len(tasks) == 0 {
+		return nil, nil
+	}
+	
+	return tasks,nil
+}
+
 // Close closes the database connection
 func (s *Sqlite) Close() error {
 	return s.Db.Close()
