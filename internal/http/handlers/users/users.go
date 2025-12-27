@@ -73,3 +73,32 @@ func GetUserInfo(storage storage.Storage) http.HandlerFunc{
 		response.WriteJson(w,http.StatusOK,user)
 	}
 }
+
+func DeleteUserInfo(storage storage.Storage)http.HandlerFunc{
+	return func(w http.ResponseWriter, r *http.Request) {
+		userId,err := helpers.ParsePathInt64(r,"id")
+		if err!= nil{
+			response.WriteJson(w,http.StatusBadRequest,response.GeneralError(err))
+			return  // ← Missing return fixed!
+		}
+		slog.Info("deleting user with", slog.Int64("userId", userId))
+		exist,err := storage.UserExists(userId)
+		if err!= nil{
+			response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
+			return 
+		}
+		if !exist{
+			response.WriteJson(w,http.StatusNotFound,response.GeneralError(fmt.Errorf("user with id %d does not exist",userId)))
+			return 
+		}
+		err = storage.DeleteUser(userId)
+		if err!= nil{
+			response.WriteJson(w,http.StatusInternalServerError,response.GeneralError(err))
+			return 
+		}
+		response.WriteJson(w,http.StatusOK,map[string]interface{}{
+			"status":"deleted",
+			"userid":userId,
+		})
+	}
+}

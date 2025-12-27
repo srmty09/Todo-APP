@@ -281,6 +281,31 @@ func (s *Sqlite) GetUser(userId int64)(*types.User,error){
 	return &user,nil
 }
 
+func (s *Sqlite) DeleteUser(userid int64)(error){
+	// This single query deletes the user AND all their tasks automatically
+	// because we have FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+	stmt, err := s.Db.Prepare("DELETE FROM user WHERE id = ?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	
+	result, err := stmt.Exec(userid)
+	if err != nil {
+		return err
+	}
+	
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	
+	if rowsAffected == 0 {
+		return fmt.Errorf("user with id %d does not exist", userid)
+	}
+	
+	return nil
+}
 
 
 // Close closes the database connection

@@ -18,5 +18,6 @@ type Storage interface{
 	DeletingTask(userid int64, taskid int64)(error)
 	EditTask(userid int64, taskid int64, title string, description string)(error)
 	GetUser(userid int64)(*types.User,error)
+	DeleteUser(userid int64)(error)
 	Close() error
 }

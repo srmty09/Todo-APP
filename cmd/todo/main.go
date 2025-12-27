@@ -31,7 +31,12 @@ func main() {
 	
 	router := http.NewServeMux()
 
+	// User routes
 	router.HandleFunc("POST /api/user", users.New(storage))
+	router.HandleFunc("GET /api/user/{id}", users.GetUserInfo(storage))
+	router.HandleFunc("DELETE /api/user/{id}", users.DeleteUserInfo(storage))
+	
+	// Task routes
 	router.HandleFunc("POST /api/user/{id}/add_task/",tasks.Add(storage))
 	router.HandleFunc("GET /api/user/{id}/todo/",tasks.GetTodo(storage))
 	router.HandleFunc("GET /api/user/{id}/todo/{task_id}",tasks.GetSingleTask(storage))
@@ -39,7 +44,6 @@ func main() {
 	router.HandleFunc("PATCH /api/user/{id}/todo/incompleted/{task_id}",tasks.IncompletedTask(storage))
 	router.HandleFunc("DELETE /api/user/{id}/todo/{task_id}",tasks.DeleteTask(storage))
 	router.HandleFunc("PATCH /api/user/{id}/todo/{task_id}",tasks.EditTask(storage))
-	router.HandleFunc("GET /api/user/{id}",users.GetUserInfo(storage))
 
 	server := &http.Server{
 		Addr:    cfg.HTTPServer.Addr,
